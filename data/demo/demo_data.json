@@ -1,0 +1,51 @@
+{
+  "_note": "SAMPLE DATA for offline demos. Vendors are fictional and prices are illustrative, not real quotes. Yields are illustrative assumptions.",
+  "compounds": [
+    {"name": "Topiramate", "cas": "97240-79-4", "smiles": "CC1(O[C@@H]2CO[C@@]3([C@H]([C@@H]2O1)OC(O3)(C)C)COS(=O)(=O)N)C", "synonyms": ["topamax"]},
+    {"name": "2,3:4,5-Di-O-isopropylidene-beta-D-fructopyranose", "cas": "20880-92-6", "smiles": "CC1(O[C@@H]2CO[C@@]3([C@H]([C@@H]2O1)OC(O3)(C)C)CO)C", "synonyms": ["diacetone fructose"]},
+    {"name": "D-Fructose", "cas": "57-48-7", "smiles": "C([C@H]([C@H]([C@@H](C(=O)CO)O)O)O)O", "synonyms": ["fructose"]},
+    {"name": "Acetone", "cas": "67-64-1", "smiles": "CC(C)=O", "synonyms": ["propanone"]},
+    {"name": "Sulfamoyl chloride", "cas": "7778-42-9", "smiles": "NS(=O)(=O)Cl", "synonyms": []},
+    {"name": "N-Benzylbenzamide", "cas": "1485-70-7", "smiles": "O=C(NCc1ccccc1)c1ccccc1", "synonyms": []},
+    {"name": "Benzoyl chloride", "cas": "98-88-4", "smiles": "O=C(Cl)c1ccccc1", "synonyms": []},
+    {"name": "Benzylamine", "cas": "100-46-9", "smiles": "NCc1ccccc1", "synonyms": []}
+  ],
+  "offers": [
+    {"cas": "97240-79-4", "vendor": "Demo Supplier A", "pack": "1 g", "price": 95, "currency": "AUD", "purity": 98, "in_stock": true},
+    {"cas": "97240-79-4", "vendor": "Demo Supplier A", "pack": "5 g", "price": 320, "currency": "AUD", "purity": 98, "in_stock": true},
+    {"cas": "97240-79-4", "vendor": "Demo Supplier B", "pack": "1 g", "price": 55, "currency": "USD", "purity": 99, "in_stock": true},
+    {"cas": "97240-79-4", "vendor": "Demo Supplier B", "pack": "10 g", "price": null, "currency": "USD", "purity": 99, "quote_only": true},
+    {"cas": "57-48-7", "vendor": "Demo Supplier A", "pack": "500 g", "price": 60, "currency": "AUD", "purity": 99, "in_stock": true},
+    {"cas": "67-64-1", "vendor": "Demo Supplier A", "pack": "1 kg", "price": 45, "currency": "AUD", "purity": 99.5, "in_stock": true},
+    {"cas": "7778-42-9", "vendor": "Demo Supplier B", "pack": "5 g", "price": 110, "currency": "AUD", "purity": 97, "in_stock": true},
+    {"cas": "7778-42-9", "vendor": "Demo Supplier B", "pack": "25 g", "price": 380, "currency": "AUD", "purity": 97, "in_stock": true},
+    {"cas": "98-88-4", "vendor": "Demo Supplier A", "pack": "100 g", "price": 55, "currency": "AUD", "purity": 99, "in_stock": true},
+    {"cas": "100-46-9", "vendor": "Demo Supplier B", "pack": "100 g", "price": 70, "currency": "AUD", "purity": 99, "in_stock": true}
+  ],
+  "reactions": [
+    {
+      "product_cas": "20880-92-6",
+      "reactants_cas": ["57-48-7", "67-64-1"],
+      "equivalents": [1.0, 2.0],
+      "yield": 0.55,
+      "conditions": "Acetone, catalytic H2SO4, room temperature (illustrative)",
+      "reference": "Demo route (illustrative)"
+    },
+    {
+      "product_cas": "97240-79-4",
+      "reactants_cas": ["20880-92-6", "7778-42-9"],
+      "equivalents": [1.0, 1.5],
+      "yield": 0.75,
+      "conditions": "Sulfamoyl chloride, base, DMF, 0 °C to rt (illustrative)",
+      "reference": "Demo route (illustrative)"
+    },
+    {
+      "product_cas": "1485-70-7",
+      "reactants_cas": ["98-88-4", "100-46-9"],
+      "equivalents": [1.0, 1.1],
+      "yield": 0.9,
+      "conditions": "DCM, triethylamine, 0 °C (illustrative)",
+      "reference": "Demo route (illustrative)"
+    }
+  ]
+}

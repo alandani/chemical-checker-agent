@@ -1,0 +1,195 @@
+# Chemical Price Checker Agent
+
+A Streamlit app that answers one question for a researcher: **can I afford this compound, and should I buy it or make it?**
+
+Enter a compound (drawn structure, SMILES, name or CAS), the quantity, minimum purity and budget. The agent checks, from cheapest to most speculative:
+
+1. **Buy it.** Is it sold by one of the vendors, and for how much?
+2. **Make it from a known route.** Is there a recorded synthesis? If so, price the starting materials.
+3. **Make it from a predicted route.** If there's no known route, predict one with AiZynthFinder and price that.
+
+It returns a report: a budget verdict with a short explanation, vendor prices, the synthesis route with a materials cost table, an option to edit assumptions and recalculate, and HTML/CSV export.
+
+Useful for estimating experiment costs, planning grants and planning manufacturing.
+
+---
+
+## Quick start (local, no API key, about 2 minutes)
+
+Requires Python 3.11+.
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env              # optional: add ANTHROPIC_API_KEY
+python -m scripts.seed_demo       # creates data/chemchecker.db with sample data
+streamlit run app/main.py
+```
+
+Open http://localhost:8501 and try:
+
+| Input | What it shows |
+|---|---|
+| `Topiramate`, 2 g, budget 300 | **Buy only**: it's in stock, so route search is skipped |
+| `Topiramate`, 10 g, budget 500, tick *"Also cost a synthesis route"* | Buy vs make, using the 2-step known route |
+| SMILES `O=C(NCc1ccccc1)c1ccccc1`, 50 g, budget 200 | **Not sold** by any vendor, so it's costed from a known route |
+
+> The demo data (`data/demo/demo_data.json`) uses **fictional vendors with illustrative prices and yields**. The app labels these as "sample" everywhere they appear. Delete them or run `python -m scripts.seed_demo --no-demo` on a fresh database for real use.
+
+Run the tests:
+
+```bash
+pytest
+```
+
+## Run with Docker (PostgreSQL + app + nightly worker)
+
+```bash
+cp .env.example .env    # add ANTHROPIC_API_KEY
+docker compose up --build
+```
+
+This starts `db` (PostgreSQL 16), `seed` (creates tables and loads the demo data, then exits), `app` (Streamlit on port 8501) and `worker` (refreshes prices nightly at 02:00). To include the headless browser for JavaScript-heavy vendor sites, run `docker compose build --build-arg WITH_BROWSER=true`.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+    U[Researcher] --> UI[Streamlit app<br/>Ketcher input · report · export]
+    UI --> P[Pipeline orchestrator<br/>core/pipeline.py]
+    P --> R[Resolver<br/>RDKit · PubChem]
+    P --> PR[Pricing<br/>AUD per gram]
+    P --> RT[Routes<br/>known · AiZynthFinder]
+    P --> C[Cost model + explain]
+    R --> DB[(PostgreSQL / SQLite<br/>compounds · offers · reactions · runs)]
+    PR --> DB
+    RT --> DB
+    C --> LLM[Claude API]
+    PR -- cache miss --> S[Scrapers<br/>httpx/Playwright + Claude Haiku]
+    S --> V[Vendor sites]
+    W[Worker<br/>nightly refresh] --> S
+    S --> DB
+```
+
+### Pipeline state machine
+
+Each state is a function in `core/pipeline.py` that updates a shared `RunState` and returns the next state. The run is saved to the database after every state, which makes the progress UI, resuming and History possible.
+
+| State | Does | Next |
+|---|---|---|
+| `RESOLVE` | Input → standard compound record (InChIKey) via local cache, RDKit, PubChem | `CHECK_MARKET`, or `NEEDS_INPUT` if not found or ambiguous |
+| `CHECK_MARKET` | Fresh offers from the DB; if none, scrape enabled vendors in parallel (per-vendor timeout) | `COST` if buyable and not comparing ("buy only"), else `FIND_KNOWN_ROUTE` |
+| `FIND_KNOWN_ROUTE` | Chains recorded reactions backwards from the target | `PRICE_MATERIALS`, or `PREDICT_ROUTE` if none |
+| `PREDICT_ROUTE` | AiZynthFinder search; Claude ranks the top routes | `PRICE_MATERIALS`, or `COST` if no route |
+| `PRICE_MATERIALS` | Works out the grams of each starting material (accounting for yields and equivalents) and prices each one | `COST` |
+| `COST` | Cost to buy vs cost to make, compared with the budget | `EXPLAIN` |
+| `EXPLAIN` | Claude writes 2–4 sentences from the computed numbers (template fallback) | `DONE` |
+
+Failures along the way are recorded as warnings on the run, so the report always renders. Only `NEEDS_INPUT` and `DONE` end a run.
+
+### Cost model
+
+```
+grams of starting material = (target grams / target MW) / yield of each step × equivalents × MW
+make cost  = Σ cheapest whole-pack purchase for each starting material × (1 + consumables margin)
+buy cost   = cheapest whole-pack purchase of the target meeting minimum purity
+verdict    = min(buy, make) ≤ budget
+```
+
+Unknown yields use the "assumed yield per step" setting (default 70%). An unpriced starting material is flagged and the make cost is marked incomplete; it's never treated as free. All prices are converted to AUD using live ECB rates (Frankfurter API), with approximate fallback rates if the API can't be reached.
+
+---
+
+## Project layout
+
+```
+app/
+  main.py               Streamlit entry point + navigation
+  state.py              session_state helpers
+  views/                New analysis · Report · History · Data admin
+  components/           compound card, offers table, route view, verdict banner, status, export
+core/
+  models.py             Pydantic models (Query, Compound, Offer, Route, RunState, ...)
+  pipeline.py           state machine
+  resolver.py           RESOLVE (RDKit + PubChem PUG REST)
+  pricing.py            offer lookup, on-demand scraping, normalisation, cheapest purchase
+  routes.py             known routes + AiZynthFinder
+  cost.py               starting-material quantities + cost breakdown
+  explain.py            Claude summary with template fallback
+  db.py / repository.py SQLAlchemy schema and data access
+  chem.py, units.py, fx.py, llm.py, config.py
+scrapers/
+  vendors.py            the 11 vendors from the deck
+  generic.py            fetch search page → Claude Haiku extracts offers as JSON
+  registry.py           vendor key → scraper; add custom scrapers here
+scripts/
+  seed_demo.py          create tables, register vendors, load sample data
+  load_reactions.py     load a USPTO-style reaction CSV
+  scrape.py             scrape one compound from the CLI
+worker/scheduler.py     nightly refresh (APScheduler)
+data/demo/              sample data for offline demos
+tests/                  pytest suite (runs offline on the sample data)
+```
+
+---
+
+## Setting up real data
+
+### 1. Vendor scraping
+
+All 11 vendors from the deck are listed in `scrapers/vendors.py`. **None of the search URLs have been tested against the live sites yet.** For each vendor you want to use:
+
+1. Open the vendor's site, search for a CAS number (e.g. `97240-79-4`), and copy the real search URL into `search_url` with `{q}` in place of the term.
+2. Set `requires_js=True` if prices only appear after JavaScript runs, and install the browser: `pip install playwright && playwright install chromium`.
+3. Test it: `python -m scripts.scrape 97240-79-4 --vendor <key>`.
+4. Once it works, set `verified=True` and add the key to `ENABLED_VENDORS` in `.env`.
+
+The generic scraper sends the page text to Claude Haiku, which returns structured offers (pack, price, currency, purity, quote-only). That's why `ANTHROPIC_API_KEY` is needed for live prices. If a site needs more than one page (product sub-pages, pagination), subclass `GenericSearchScraper` and register it in `scrapers/registry.py`.
+
+Check each vendor's terms of use and robots.txt before scraping, keep request rates low, and prefer an official API or data feed where one exists.
+
+### 2. Known reactions (USPTO)
+
+Load any CSV with a reaction SMILES column (`reactants>reagents>products`; atom maps are stripped automatically), or with separate `reactants` and `product` columns:
+
+```bash
+python -m scripts.load_reactions data/uspto_50k.csv --rxn-col rxn_smiles --limit 50000
+```
+
+Optional columns: `yield`, `conditions`, `reference`. Publicly available USPTO extracts (e.g. USPTO-50k) and the Open Reaction Database both work once exported to CSV.
+
+### 3. Route prediction (AiZynthFinder, optional)
+
+```bash
+pip install aizynthfinder
+download_public_data data/aizynth        # public USPTO model + ZINC stock (several GB)
+echo "AIZYNTH_CONFIG=data/aizynth/config.yml" >> .env
+```
+
+Without this, the pipeline skips prediction and adds a note to the report. The model loads once per process (`core/routes.py`). Searches are capped at `AIZYNTH_TIME_LIMIT_S` (default 90 s).
+
+---
+
+## Configuration (`.env`)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | – | Price extraction, route ranking and summaries. Without it, the app uses cached/sample data and template text |
+| `CLAUDE_MODEL_REASONING` | `claude-sonnet-5-5` | Route ranking and summary |
+| `CLAUDE_MODEL_EXTRACTION` | `claude-haiku-5-5` | Pulling offers out of vendor pages |
+| `DATABASE_URL` | `sqlite:///data/chemchecker.db` | e.g. `postgresql+psycopg://user:pass@host/db` |
+| `ENABLE_LIVE_SCRAPING` | `true` | Turn off for offline demos |
+| `ENABLED_VENDORS` | `bldpharm,enamine,medchemexpress` | Vendor keys from `scrapers/vendors.py` |
+| `OFFER_MAX_AGE_DAYS` | `7` | Cached offers older than this are re-scraped |
+| `SCRAPE_TIMEOUT_S` | `30` | Per-vendor timeout |
+| `AIZYNTH_CONFIG` | – | Path to AiZynthFinder `config.yml` |
+
+## Known limitations / next steps
+
+- Vendor search URLs need checking against the live sites (see above). Some vendors hide prices behind a login or quote request; these show as "Request quote".
+- Pack sizes sold by volume (mL/L) can't be compared per gram without a density, so they're stored but not priced. Adding densities for common solvents would fix this.
+- Solvents and reagents that don't end up in the product are covered by the consumables margin, not priced individually.
+- PDF export is "download HTML, then print to PDF" to avoid system dependencies. WeasyPrint can be added for server-side PDFs.
+- Competitor reference: ChemCupid (Japanese market). Where this project differs: multiple vendors across regions, costing via synthesis routes, and a budget verdict.

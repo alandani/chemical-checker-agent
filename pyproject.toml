@@ -1,0 +1,8 @@
+[project]
+name = "chemical-price-checker"
+version = "0.1.0"
+description = "Check whether a chemical compound fits a research budget: buy it, make it from a known route, or from an AI-predicted route."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
