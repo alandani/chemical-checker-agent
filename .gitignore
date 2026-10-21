@@ -8,3 +8,5 @@ data/*.db
 data/aizynth/
 data/*.csv
 !data/demo/
+web/node_modules/
+web/dist/

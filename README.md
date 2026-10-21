@@ -1,6 +1,6 @@
 # Chemical Price Checker Agent
 
-A Streamlit app that answers one question for a researcher: **can I afford this compound, and should I buy it or make it?**
+A web app (React frontend, FastAPI backend) that answers one question for a researcher: **can I afford this compound, and should I buy it or make it?**
 
 Enter a compound (drawn structure, SMILES, name or CAS), the quantity, minimum purity and budget. The agent checks, from cheapest to most speculative:
 
@@ -14,19 +14,27 @@ Useful for estimating experiment costs, planning grants and planning manufacturi
 
 ---
 
-## Quick start (local, no API key, about 2 minutes)
+## Quick start (local, no API key)
 
-Requires Python 3.11+.
+Requires Python 3.11+ and Node.js 20+.
 
 ```bash
+# 1. Backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env              # optional: add ANTHROPIC_API_KEY
 python -m scripts.seed_demo       # creates data/chemchecker.db with sample data
-streamlit run app/main.py
+uvicorn api.main:app --reload     # API on http://localhost:8000
+
+# 2. Frontend (second terminal)
+cd web
+npm install
+npm run dev                       # http://localhost:5173, proxies /api to :8000
 ```
 
-Open http://localhost:8501 and try:
+For a single server, build the frontend once (`cd web && npm run build`) and FastAPI serves it at http://localhost:8000.
+
+Open http://localhost:5173 and try:
 
 | Input | What it shows |
 |---|---|
@@ -49,7 +57,7 @@ cp .env.example .env    # add ANTHROPIC_API_KEY
 docker compose up --build
 ```
 
-This starts `db` (PostgreSQL 16), `seed` (creates tables and loads the demo data, then exits), `app` (Streamlit on port 8501) and `worker` (refreshes prices nightly at 02:00). To include the headless browser for JavaScript-heavy vendor sites, run `docker compose build --build-arg WITH_BROWSER=true`.
+This starts `db` (PostgreSQL 16), `seed` (creates tables and loads the demo data, then exits), `app` (API and built frontend on port 8000) and `worker` (refreshes prices nightly at 02:00). To include the headless browser for JavaScript-heavy vendor sites, run `docker compose build --build-arg WITH_BROWSER=true`.
 
 ---
 
@@ -57,8 +65,10 @@ This starts `db` (PostgreSQL 16), `seed` (creates tables and loads the demo data
 
 ```mermaid
 flowchart TB
-    U[Researcher] --> UI[Streamlit app<br/>Ketcher input · report · export]
-    UI --> P[Pipeline orchestrator<br/>core/pipeline.py]
+    U[Researcher] --> UI[React web app<br/>Ketcher drawing, live progress, report]
+    UI -- REST + SSE --> API[FastAPI<br/>api/main.py]
+    API
+--> P[Pipeline orchestrator<br/>core/pipeline.py]
     P --> R[Resolver<br/>RDKit · PubChem]
     P --> PR[Pricing<br/>AUD per gram]
     P --> RT[Routes<br/>known · AiZynthFinder]
@@ -102,14 +112,39 @@ Unknown yields use the "assumed yield per step" setting (default 70%). An unpric
 
 ---
 
+### API
+
+Interactive docs at http://localhost:8000/docs.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/resolve` | Name, CAS or SMILES to a compound, or a list of candidates |
+| `POST /api/runs` | Start an analysis in the background, returns `run_id` |
+| `GET /api/runs/{id}/events` | Server-Sent Events: one `stage` event per step, then `done` with the full result |
+| `GET /api/runs/{id}` | Current state of a run |
+| `POST /api/runs/{id}/recost` | Change quantity, budget, yield or margin and recalculate |
+| `POST /api/runs/{id}/compound` | Pick a compound for a run that stopped at "needs input" |
+| `GET /api/runs` | History |
+| `GET /api/svg/molecule`, `/api/svg/reaction` | RDKit drawings, light or dark theme |
+| `GET /api/runs/{id}/export/report.html`, `.../offers.csv`, `.../materials.csv` | Exports |
+| `GET /api/admin/overview`, `POST /api/admin/scrape`, `POST /api/admin/demo` | Data page |
+
+### Web UI
+
+- **New analysis**: enter a name, CAS or SMILES, or draw the structure in Ketcher. The structure shows on a graph-paper plate so you can confirm it before running.
+- **Report**: the stages show live while the run is in progress. The verdict is drawn as a titration scale: the budget is the endpoint, and the buy and make costs are plotted against it. Changing an assumption in the side panel (quantity, budget, yield, margin) recalculates the cost and moves the readings on the scale.
+- **History** and **Data**: past runs, vendor health, on-demand vendor search, and sample data.
+- Light and dark themes (follows the system setting, with a toggle in the sidebar).
+
 ## Project layout
 
 ```
-app/
-  main.py               Streamlit entry point + navigation
-  state.py              session_state helpers
-  views/                New analysis · Report · History · Data admin
-  components/           compound card, offers table, route view, verdict banner, status, export
+api/
+  main.py               FastAPI routes: resolve, runs (+ SSE progress), recost, SVG drawings, exports, admin
+  runs.py               runs the pipeline in a background thread and collects stage events
+web/                    React + TypeScript + Tailwind frontend (Vite)
+  src/pages/            Analyze · Report · History · Data
+  src/components/       TitrationScale (budget verdict), StageTrack, RouteSteps, tables, StructureEditor (Ketcher)
 core/
   models.py             Pydantic models (Query, Compound, Offer, Route, RunState, ...)
   pipeline.py           state machine
@@ -118,6 +153,7 @@ core/
   routes.py             known routes + AiZynthFinder
   cost.py               starting-material quantities + cost breakdown
   explain.py            Claude summary with template fallback
+  report.py             HTML report and CSV exports
   db.py / repository.py SQLAlchemy schema and data access
   chem.py, units.py, fx.py, llm.py, config.py
 scrapers/

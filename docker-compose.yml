@@ -32,7 +32,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://chem:chem@db:5432/chemchecker
     ports:
-      - "8501:8501"
+      - "8000:8000"
     depends_on:
       seed:
         condition: service_completed_successfully

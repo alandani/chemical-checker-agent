@@ -59,19 +59,32 @@ def template_explanation(state: RunState) -> str:
         if state.materials and c is not None and not c.make_complete:
             parts.append("Some starting materials for the synthesis route have no price yet.")
         return " ".join(parts)
-    how = "buying it" if c.cheapest == "buy" else "making it from the route's starting materials"
-    verdict = "fits within" if c.fits_budget else "exceeds"
-    text = (
-        f"The cheapest option for {state.query.quantity:g} {state.query.quantity_unit} of {name} is {how}, "
-        f"at about A${c.best_cost_aud:,.2f}, which {verdict} the A${c.budget_aud:,.2f} budget"
-    )
-    gap = abs(c.gap_aud or 0)
-    text += f" by A${gap:,.2f}." if gap else "."
-    if c.cheapest == "make" and state.route and state.route.source == "predicted":
-        text += " The route is AI-predicted, so treat the cost as a rough estimate."
-    if state.uses_demo_data:
-        text += " Some prices are sample data, not live quotes."
-    return text
+    # The verdict itself is shown next to this text, so explain what drives the cost instead.
+    parts: list[str] = []
+    priced = [m for m in state.materials if m.priced]
+    if c.cheapest == "make" and priced:
+        top = max(priced, key=lambda m: m.line_cost_aud or 0)
+        share = (top.line_cost_aud or 0) / (c.make_materials_aud or 1)
+        steps = len(state.route.steps) if state.route else 0
+        parts.append(
+            f"{top.name or 'One starting material'} is the largest cost at A${top.line_cost_aud:,.2f}, "
+            f"{share:.0%} of the materials for the {steps}-step synthesis."
+        )
+        if c.buy:
+            parts.append(f"Buying {name} ready-made would cost A${c.buy.total_aud:,.2f}.")
+        else:
+            parts.append(f"{name} isn't sold by the vendors searched, so making it is the only option.")
+        if state.route and state.route.source == "predicted":
+            parts.append("The route is AI-predicted, so treat this as a rough estimate.")
+    elif c.buy:
+        o = c.buy.offer
+        parts.append(
+            f"The cheapest offer is {c.buy.n_packs} × {o.pack_qty:g} {o.pack_unit} from {o.vendor}, "
+            f"about A${o.price_aud_per_g:,.2f} per gram."
+        )
+        if c.make_total_aud is not None:
+            parts.append(f"Making it from the route would cost about A${c.make_total_aud:,.2f}.")
+    return " ".join(parts)  # the UI and exports flag sample data separately
 
 
 def explain(state: RunState) -> str:
