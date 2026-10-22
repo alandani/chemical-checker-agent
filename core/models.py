@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 StateName = Literal[
     "RESOLVE",
@@ -58,6 +58,7 @@ class Compound(BaseModel):
     mol_weight: float | None = None
     pubchem_cid: int | None = None
 
+    @computed_field
     @property
     def label(self) -> str:
         return self.name or self.cas or self.smiles
@@ -99,6 +100,7 @@ class RouteStep(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @computed_field
     @property
     def reaction_smiles(self) -> str:
         return ".".join(self.reactants) + ">>" + self.product
@@ -120,10 +122,12 @@ class MaterialCost(BaseModel):
     purchase: Purchase | None = None
     is_demo: bool = False
 
+    @computed_field
     @property
     def priced(self) -> bool:
         return self.purchase is not None
 
+    @computed_field
     @property
     def line_cost_aud(self) -> float | None:
         return self.purchase.total_aud if self.purchase else None
@@ -139,6 +143,7 @@ class CostBreakdown(BaseModel):
     best_cost_aud: float | None = None
     fits_budget: bool | None = None
 
+    @computed_field
     @property
     def gap_aud(self) -> float | None:
         if self.best_cost_aud is None:
@@ -169,6 +174,7 @@ class RunState(BaseModel):
         if message not in self.warnings:
             self.warnings.append(message)
 
+    @computed_field
     @property
     def uses_demo_data(self) -> bool:
         return any(o.is_demo for o in self.offers) or any(m.is_demo for m in self.materials)

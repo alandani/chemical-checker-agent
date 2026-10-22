@@ -51,3 +51,35 @@ def test_cheapest_purchase_whole_packs():
 def test_purity_filter():
     offers = [_offer(5, 10, purity=90), _offer(5, 50, purity=99)]
     assert cheapest_purchase(offers, 1, min_purity=95).total_aud == 50
+
+
+def test_vendor_search_urls_and_404():
+    from core.models import Compound
+    from scrapers.registry import get_scraper
+
+    c = Compound(inchikey="X", smiles="NCc1ccccc1", name="Benzylamine", cas="100-46-9")
+    enamine = get_scraper("enamine")
+    assert "searchBy=CASs" in enamine.search_url(c)
+    assert "searchBy" not in enamine.search_url(c.model_copy(update={"cas": None}))
+
+    mce = get_scraper("medchemexpress")
+    mce.fetch = lambda url: None  # vendor answered 404: no such product
+    assert mce.search(c) == []
+
+
+def test_sample_offers_do_not_block_live_search(monkeypatch):
+    from core import pricing, repository
+    from core.config import get_settings
+
+    compound = repository.find_compound_local("Topiramate")  # has sample offers only
+    monkeypatch.setattr(get_settings(), "enable_live_scraping", True)
+    called = {}
+
+    def fake_scrape(c, scrapers):
+        called["yes"] = True
+        return [], ["Fake vendor: timed out"]
+
+    monkeypatch.setattr(pricing, "scrape_compound", fake_scrape)
+    offers, warnings = pricing.get_offers(compound)
+    assert called and warnings == ["Fake vendor: timed out"]
+    assert offers and all(o.is_demo for o in offers)  # samples still shown alongside the warning

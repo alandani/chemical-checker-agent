@@ -98,7 +98,9 @@ def get_offers(
 
     settings = get_settings()
     cached = repository.get_offers(compound.inchikey, max_age_days=settings.offer_max_age_days)
-    if cached and not force_refresh:
+    real_cached = [o for o in cached if not o.is_demo]
+    # Sample offers never stand in for a live search: only fresh real offers skip scraping.
+    if (real_cached or (cached and not settings.enable_live_scraping)) and not force_refresh:
         return cached, []
     if not settings.enable_live_scraping:
         return cached, ([] if cached else ["Live scraping is disabled (ENABLE_LIVE_SCRAPING=false)."])

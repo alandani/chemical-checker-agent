@@ -62,13 +62,16 @@ class GenericSearchScraper(VendorScraper):
         return compound.cas or compound.name or compound.smiles
 
     def search_url(self, compound: Compound) -> str:
-        if not self.info.search_url:
-            raise ScrapeError(f"{self.name}: no search URL configured")
         from urllib.parse import quote
 
-        return self.info.search_url.format(q=quote(self.search_term(compound)))
+        # Some vendors need a different URL for CAS searches and name searches.
+        template = self.info.search_url if compound.cas else (self.info.name_search_url or self.info.search_url)
+        if not template:
+            raise ScrapeError(f"{self.name}: no search URL configured")
+        return template.format(q=quote(self.search_term(compound)))
 
-    def fetch(self, url: str) -> str:
+    def fetch(self, url: str) -> str | None:
+        """Return the page HTML, or None when the vendor says it has no such product (HTTP 404)."""
         settings = get_settings()
         if self.info.requires_js:
             return self._fetch_with_browser(url, settings.scrape_timeout_s)
@@ -79,13 +82,17 @@ class GenericSearchScraper(VendorScraper):
                 follow_redirects=True,
                 headers={"User-Agent": settings.user_agent, "Accept-Language": "en"},
             )
+            # Some vendors (e.g. MedChemExpress) answer a search with no matches with a 404 page.
+            if r.status_code == 404:
+                return None
             r.raise_for_status()
             return r.text
         except httpx.HTTPError as exc:
             raise ScrapeError(f"{self.name}: {exc}") from exc
 
-    def _fetch_with_browser(self, url: str, timeout_s: int) -> str:
+    def _fetch_with_browser(self, url: str, timeout_s: int) -> str | None:
         try:
+            from playwright.sync_api import TimeoutError as PlaywrightTimeout
             from playwright.sync_api import sync_playwright
         except ImportError as exc:
             raise ScrapeError(
@@ -94,11 +101,21 @@ class GenericSearchScraper(VendorScraper):
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
-                page = browser.new_page(user_agent=get_settings().user_agent)
-                page.goto(url, timeout=timeout_s * 1000, wait_until="networkidle")
-                html = page.content()
-                browser.close()
-                return html
+                try:
+                    page = browser.new_page()
+                    response = page.goto(url, timeout=timeout_s * 1000, wait_until="domcontentloaded")
+                    if response is not None and response.status == 404:
+                        return None
+                    # Shop pages keep analytics connections open, so the network never goes fully
+                    # idle. Give the results a few seconds to render, then read whatever is there.
+                    try:
+                        page.wait_for_load_state("networkidle", timeout=8000)
+                    except PlaywrightTimeout:
+                        pass
+                    page.wait_for_timeout(1500)
+                    return page.content()
+                finally:
+                    browser.close()
         except Exception as exc:
             raise ScrapeError(f"{self.name}: browser fetch failed: {exc}") from exc
 
@@ -139,4 +156,6 @@ class GenericSearchScraper(VendorScraper):
     def search(self, compound: Compound) -> list[RawOffer]:
         url = self.search_url(compound)
         html = self.fetch(url)
+        if html is None:  # vendor has no product for this search
+            return []
         return self.parse(html, compound, url)
