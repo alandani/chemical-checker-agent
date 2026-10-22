@@ -19,3 +19,5 @@ playwright>=1.45
 # Models + stock are downloaded separately: `download_public_data data/aizynth`
 # (Docker does this once into the `aizynth` volume), then set AIZYNTH_CONFIG.
 aizynthfinder>=4.4,<5
+numpy<2          # aizynthfinder requirement
+pyarrow<21       # newer pyarrow needs numpy>=2 (pulled in via dask)

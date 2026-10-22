@@ -68,7 +68,8 @@ def _aizynth_finder():
         return None
     try:
         from aizynthfinder.aizynthfinder import AiZynthFinder
-    except ImportError:
+    except ImportError as exc:
+        log.warning("AIZYNTH_CONFIG is set but aizynthfinder failed to import: %s", exc)
         return None
     finder = AiZynthFinder(configfile=path)
     # Use every stock defined in the config, and the first expansion/filter policy.
