@@ -48,6 +48,7 @@ export const api = {
   scrape: (term: string, vendors: string[]) =>
     post<{ compound: Compound; offers: Offer[]; warnings: string[] }>("/api/admin/scrape", { term, vendors }),
   reloadDemo: () => post<Record<string, number>>("/api/admin/demo", {}),
+  removeDemo: () => request<Record<string, number>>("/api/admin/demo", { method: "DELETE" }),
 };
 
 export const svgUrl = {

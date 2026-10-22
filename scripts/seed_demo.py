@@ -76,6 +76,14 @@ def load_demo() -> dict[str, int]:
     return {"compounds": len(by_cas), "offers": len(offers), "reactions": len(data["reactions"])}
 
 
+def remove_demo() -> dict[str, int]:
+    """Delete the sample offers and reactions. Compounds are kept: they may be shared with real data."""
+    with session_scope() as s:
+        offers = s.execute(delete(OfferRow).where(OfferRow.is_demo.is_(True))).rowcount
+        reactions = s.execute(delete(ReactionRow).where(ReactionRow.source == "demo")).rowcount
+    return {"offers": offers, "reactions": reactions}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-demo", action="store_true", help="skip the sample data")

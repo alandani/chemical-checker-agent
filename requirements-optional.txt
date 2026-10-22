@@ -1,7 +1,0 @@
-# Headless browser for vendors whose prices load with JavaScript.
-# After installing: playwright install chromium
-playwright>=1.45
-
-# Retrosynthesis route prediction (large: pulls in TensorFlow/ONNX + models).
-# After installing: download_public_data data/aizynth   (then set AIZYNTH_CONFIG)
-aizynthfinder>=4.3

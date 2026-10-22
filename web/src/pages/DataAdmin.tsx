@@ -23,6 +23,11 @@ export default function DataAdmin() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
   });
 
+  const removeDemo = useMutation({
+    mutationFn: api.removeDemo,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin"] }),
+  });
+
   function submit(e: FormEvent) {
     e.preventDefault();
     if (term.trim() && selected.length) scrape.mutate();
@@ -133,10 +138,26 @@ export default function DataAdmin() {
         <p className="text-sm text-slate max-w-[65ch] mb-3">
           Fictional vendors with illustrative prices, for demos without a network connection. They're labelled “Sample” wherever they appear.
         </p>
-        <Button variant="outline" onClick={() => demo.mutate()} busy={demo.isPending}>
-          Reload sample data
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => demo.mutate()} busy={demo.isPending}>
+            Reload sample data
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (window.confirm("Remove all sample offers and reactions? Live data is not affected.")) removeDemo.mutate();
+            }}
+            busy={removeDemo.isPending}
+          >
+            Remove sample data
+          </Button>
+        </div>
         {demo.isSuccess && <p className="text-sm text-fits mt-2">Sample data reloaded.</p>}
+        {removeDemo.isSuccess && (
+          <p className="text-sm text-fits mt-2">
+            Removed {removeDemo.data.offers} sample offers and {removeDemo.data.reactions} sample reactions.
+          </p>
+        )}
       </Section>
 
       {overview.data && overview.data.rates.length > 0 && (

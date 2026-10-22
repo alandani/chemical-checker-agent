@@ -1,6 +1,6 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
-rdkit>=2024.9.1
+rdkit>=2023.9.5,<2024  # AiZynthFinder pins rdkit<2024
 pydantic>=2.7
 pydantic-settings>=2.3
 SQLAlchemy>=2.0
@@ -10,3 +10,12 @@ selectolax>=0.3.21
 anthropic>=0.40
 APScheduler>=3.10,<4
 pytest>=8.0
+
+# Headless browser for vendors whose prices load with JavaScript (e.g. BLDPharm).
+# After installing locally: playwright install chromium  (the Docker image does this)
+playwright>=1.45
+
+# Retrosynthesis route prediction (AiZynthFinder, ONNX runtime; no TensorFlow needed).
+# Models + stock are downloaded separately: `download_public_data data/aizynth`
+# (Docker does this once into the `aizynth` volume), then set AIZYNTH_CONFIG.
+aizynthfinder>=4.4,<5

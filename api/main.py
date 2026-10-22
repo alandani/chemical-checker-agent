@@ -308,6 +308,13 @@ def admin_reload_demo() -> dict:
     return load_demo()
 
 
+@app.delete("/api/admin/demo")
+def admin_remove_demo() -> dict:
+    from scripts.seed_demo import remove_demo
+
+    return remove_demo()
+
+
 # ---------------- web frontend ----------------
 
 if WEB_DIST.exists():

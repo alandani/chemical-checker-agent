@@ -13,7 +13,10 @@ services:
       retries: 10
 
   seed:
-    build: .
+    build:
+      context: .
+      args:
+        WITH_BROWSER: ${WITH_BROWSER:-true}
     env_file:
       - path: .env
         required: false
@@ -24,21 +27,44 @@ services:
       db:
         condition: service_healthy
 
+  # One-off: downloads the public AiZynthFinder models + stock (several GB) into the volume.
+  aizynth-init:
+    build:
+      context: .
+      args:
+        WITH_BROWSER: ${WITH_BROWSER:-true}
+    command: >
+      sh -c "[ -f /app/data/aizynth/config.yml ] && echo 'AiZynthFinder data already present' ||
+             download_public_data /app/data/aizynth"
+    volumes:
+      - aizynth:/app/data/aizynth
+
   app:
-    build: .
+    build:
+      context: .
+      args:
+        WITH_BROWSER: ${WITH_BROWSER:-true}
     env_file:
       - path: .env
         required: false
     environment:
       DATABASE_URL: postgresql+psycopg://chem:chem@db:5432/chemchecker
+      AIZYNTH_CONFIG: /app/data/aizynth/config.yml
     ports:
       - "8000:8000"
+    volumes:
+      - aizynth:/app/data/aizynth
     depends_on:
       seed:
         condition: service_completed_successfully
+      aizynth-init:
+        condition: service_completed_successfully
 
   worker:
-    build: .
+    build:
+      context: .
+      args:
+        WITH_BROWSER: ${WITH_BROWSER:-true}
     env_file:
       - path: .env
         required: false
@@ -51,3 +77,4 @@ services:
 
 volumes:
   pgdata:
+  aizynth:
