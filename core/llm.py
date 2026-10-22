@@ -47,7 +47,11 @@ def extract(
     model: str | None = None,
     max_tokens: int = 2000,
 ) -> dict | None:
-    """Structured extraction via a forced tool call. Returns the tool input dict."""
+    """Structured extraction via a tool call. Returns the tool input dict.
+
+    Newer models reject a forced `tool_choice`, so the tool is offered with `auto` and the prompt tells
+    the model to call it.
+    """
     client = _client()
     if client is None:
         return None
@@ -56,8 +60,8 @@ def extract(
             model=model or get_settings().claude_model_extraction,
             max_tokens=max_tokens,
             tools=[{"name": tool_name, "description": tool_description, "input_schema": input_schema}],
-            tool_choice={"type": "tool", "name": tool_name},
-            messages=[{"role": "user", "content": prompt}],
+            tool_choice={"type": "auto"},
+            messages=[{"role": "user", "content": f"{prompt}\n\nRespond only by calling the `{tool_name}` tool."}],
         )
         for block in msg.content:
             if getattr(block, "type", "") == "tool_use":
