@@ -99,6 +99,16 @@ def _pubchem_lookup(namespace: str, term: str) -> list[Compound]:
     return out
 
 
+def _backfill_cas(compound: Compound | None) -> Compound | None:
+    if compound is None or compound.cas or not compound.pubchem_cid:
+        return compound
+    cas = _pubchem_cas(compound.pubchem_cid)
+    if cas:
+        compound.cas = cas
+        repository.upsert_compound(compound)
+    return compound
+
+
 def resolve(raw: str, input_type: str = "auto") -> ResolveResult:
     raw = (raw or "").strip()
     if not raw:
@@ -111,7 +121,7 @@ def resolve(raw: str, input_type: str = "auto") -> ResolveResult:
             return ResolveResult(error=f"RDKit could not parse the SMILES '{raw}'.")
         cached = repository.get_compound(info["inchikey"])
         if cached:
-            return ResolveResult(compound=cached)
+            return ResolveResult(compound=_backfill_cas(cached))
         hits = _pubchem_lookup("inchikey", info["inchikey"])
         compound = hits[0] if hits else Compound(**info)
         compound.smiles = info["smiles"]
@@ -123,7 +133,7 @@ def resolve(raw: str, input_type: str = "auto") -> ResolveResult:
     # name or CAS
     cached = repository.find_compound_local(raw)
     if cached:
-        return ResolveResult(compound=cached)
+        return ResolveResult(compound=_backfill_cas(cached))
 
     hits = _pubchem_lookup("name", raw)
     if not hits:
@@ -141,4 +151,4 @@ def resolve(raw: str, input_type: str = "auto") -> ResolveResult:
 
     compound = hits[0]
     repository.upsert_compound(compound, synonyms=[raw])
-    return ResolveResult(compound=compound)
+    return ResolveResult(compound=_backfill_cas(compound))

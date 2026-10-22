@@ -1,1 +1,1 @@
-"""Core pipeline for the Chemical Price Checker Agent."""
+"""Core pipeline for the Chempinski Chemical Price Checker."""

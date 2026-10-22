@@ -1,4 +1,6 @@
-# Chemical Price Checker Agent
+# Chempinski
+
+Chempinski is a Chemical Price Checker for researchers and procurement teams.
 
 A web app (React frontend, FastAPI backend) that answers one question for a researcher: **can I afford this compound, and should I buy it or make it?**
 

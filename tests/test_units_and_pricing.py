@@ -28,6 +28,27 @@ def test_cas_and_input_detection():
     assert detect_input_type("Topiramate") == "name"
 
 
+def test_resolve_backfills_missing_cas_from_pubchem(monkeypatch):
+    from core import repository, resolver
+    from core.models import Compound
+
+    compound = Compound(inchikey="X", smiles="CCO", name="Ethanol", pubchem_cid=702)
+    calls = {}
+
+    monkeypatch.setattr(repository, "find_compound_local", lambda term: compound)
+
+    def fake_upsert(c, synonyms=None):
+        calls["cas"] = c.cas
+        compound.cas = c.cas
+
+    monkeypatch.setattr(repository, "upsert_compound", fake_upsert)
+    monkeypatch.setattr(resolver, "_pubchem_cas", lambda cid: "64-17-5")
+
+    result = resolver.resolve("Ethanol")
+    assert result.compound.cas == "64-17-5"
+    assert calls["cas"] == "64-17-5"
+
+
 def test_normalise_aud():
     o = normalise(RawOffer(pack="5 g", price=100, currency="AUD", purity=98), "V", "IK")
     assert o.pack_grams == 5 and o.price_aud == 100 and o.price_aud_per_g == 20

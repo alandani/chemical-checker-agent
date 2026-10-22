@@ -31,9 +31,11 @@ export function Rail() {
       <div className="flex items-center gap-2.5 px-4 h-14 md:h-16 shrink-0">
         <Logo />
         <div className="font-cond font-semibold leading-[1.1] text-[15px] hidden sm:block">
-          Chemical
+          Chempinski
           <br />
-          Price Checker
+          <span className="text-[10px] tracking-[0.12em] uppercase font-medium text-slate">
+            Chemical Price Checker
+          </span>
         </div>
       </div>
 
