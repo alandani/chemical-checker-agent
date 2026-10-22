@@ -36,6 +36,8 @@ class VendorInfo:
     base_url: str
     # Search URL with {q} placeholder (CAS preferred, else name). Verify against the live site.
     search_url: str | None = None
+    # Optional URL used when the compound has no CAS number (falls back to search_url).
+    name_search_url: str | None = None
     requires_js: bool = False
     verified: bool = False  # set True once the search URL + extraction is tested live
     notes: str = ""

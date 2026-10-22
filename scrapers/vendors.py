@@ -32,10 +32,12 @@ VENDORS: list[VendorInfo] = [
         key="enamine",
         name="Enamine",
         region="International",
-        base_url="https://enaminestore.com/categories",
-        search_url="https://enaminestore.com/search?q={q}",
+        base_url="https://enaminestore.com/",
+        search_url="https://enaminestore.com/catalog?q={q}&searchBy=CASs&inclusions=true",
+        name_search_url="https://enaminestore.com/catalog?q={q}",
         requires_js=True,
-        notes="Branching category pages; search by CAS.",
+        verified=True,  # search URL checked 2026-10-22; results list pack, price (USD) and stock
+        notes="Results show one pack per product with the other sizes in a dropdown.",
     ),
     VendorInfo(
         key="selleck",
@@ -81,6 +83,9 @@ VENDORS: list[VendorInfo] = [
         region="USA",
         base_url="https://www.medchemexpress.com/",
         search_url="https://www.medchemexpress.com/search.html?q={q}",
+        requires_js=True,
+        verified=True,  # search URL checked 2026-10-22; returns 404 when nothing matches
+        notes="Results list the first two pack sizes with USD prices; more under 'View All Sizes'.",
     ),
     VendorInfo(
         key="spex",
