@@ -36,11 +36,11 @@ For a single server, build the frontend once (`cd web && npm run build`) and Fas
 
 Open http://localhost:5173 and try:
 
-| Input | What it shows |
-|---|---|
-| `Topiramate`, 2 g, budget 300 | **Buy only**: it's in stock, so route search is skipped |
-| `Topiramate`, 10 g, budget 500, tick *"Also cost a synthesis route"* | Buy vs make, using the 2-step known route |
-| SMILES `O=C(NCc1ccccc1)c1ccccc1`, 50 g, budget 200 | **Not sold** by any vendor, so it's costed from a known route |
+| Input                                                                    | What it shows                                                       |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `Topiramate`, 2 g, budget 300                                          | **Buy only**: it's in stock, so route search is skipped       |
+| `Topiramate`, 10 g, budget 500, tick *"Also cost a synthesis route"* | Buy vs make, using the 2-step known route                           |
+| SMILES `O=C(NCc1ccccc1)c1ccccc1`, 50 g, budget 200                     | **Not sold** by any vendor, so it's costed from a known route |
 
 > The demo data (`data/demo/demo_data.json`) uses **fictional vendors with illustrative prices and yields**. The app labels these as "sample" everywhere they appear. Delete them or run `python -m scripts.seed_demo --no-demo` on a fresh database for real use.
 
@@ -87,15 +87,15 @@ flowchart TB
 
 Each state is a function in `core/pipeline.py` that updates a shared `RunState` and returns the next state. The run is saved to the database after every state, which makes the progress UI, resuming and History possible.
 
-| State | Does | Next |
-|---|---|---|
-| `RESOLVE` | Input → standard compound record (InChIKey) via local cache, RDKit, PubChem | `CHECK_MARKET`, or `NEEDS_INPUT` if not found or ambiguous |
-| `CHECK_MARKET` | Fresh offers from the DB; if none, scrape enabled vendors in parallel (per-vendor timeout) | `COST` if buyable and not comparing ("buy only"), else `FIND_KNOWN_ROUTE` |
-| `FIND_KNOWN_ROUTE` | Chains recorded reactions backwards from the target | `PRICE_MATERIALS`, or `PREDICT_ROUTE` if none |
-| `PREDICT_ROUTE` | AiZynthFinder search; Claude ranks the top routes | `PRICE_MATERIALS`, or `COST` if no route |
-| `PRICE_MATERIALS` | Works out the grams of each starting material (accounting for yields and equivalents) and prices each one | `COST` |
-| `COST` | Cost to buy vs cost to make, compared with the budget | `EXPLAIN` |
-| `EXPLAIN` | Claude writes 2–4 sentences from the computed numbers (template fallback) | `DONE` |
+| State                | Does                                                                                                      | Next                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `RESOLVE`          | Input → standard compound record (InChIKey) via local cache, RDKit, PubChem                              | `CHECK_MARKET`, or `NEEDS_INPUT` if not found or ambiguous                |
+| `CHECK_MARKET`     | Fresh offers from the DB; if none, scrape enabled vendors in parallel (per-vendor timeout)                | `COST` if buyable and not comparing ("buy only"), else `FIND_KNOWN_ROUTE` |
+| `FIND_KNOWN_ROUTE` | Chains recorded reactions backwards from the target                                                       | `PRICE_MATERIALS`, or `PREDICT_ROUTE` if none                             |
+| `PREDICT_ROUTE`    | AiZynthFinder search; Claude ranks the top routes                                                         | `PRICE_MATERIALS`, or `COST` if no route                                  |
+| `PRICE_MATERIALS`  | Works out the grams of each starting material (accounting for yields and equivalents) and prices each one | `COST`                                                                      |
+| `COST`             | Cost to buy vs cost to make, compared with the budget                                                     | `EXPLAIN`                                                                   |
+| `EXPLAIN`          | Claude writes 2–4 sentences from the computed numbers (template fallback)                                | `DONE`                                                                      |
 
 Failures along the way are recorded as warnings on the run, so the report always renders. Only `NEEDS_INPUT` and `DONE` end a run.
 
@@ -116,18 +116,18 @@ Unknown yields use the "assumed yield per step" setting (default 70%). An unpric
 
 Interactive docs at http://localhost:8000/docs.
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /api/resolve` | Name, CAS or SMILES to a compound, or a list of candidates |
-| `POST /api/runs` | Start an analysis in the background, returns `run_id` |
-| `GET /api/runs/{id}/events` | Server-Sent Events: one `stage` event per step, then `done` with the full result |
-| `GET /api/runs/{id}` | Current state of a run |
-| `POST /api/runs/{id}/recost` | Change quantity, budget, yield or margin and recalculate |
-| `POST /api/runs/{id}/compound` | Pick a compound for a run that stopped at "needs input" |
-| `GET /api/runs` | History |
-| `GET /api/svg/molecule`, `/api/svg/reaction` | RDKit drawings, light or dark theme |
-| `GET /api/runs/{id}/export/report.html`, `.../offers.csv`, `.../materials.csv` | Exports |
-| `GET /api/admin/overview`, `POST /api/admin/scrape`, `POST /api/admin/demo` | Data page |
+| Endpoint                                                                             | Purpose                                                                              |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `POST /api/resolve`                                                                | Name, CAS or SMILES to a compound, or a list of candidates                           |
+| `POST /api/runs`                                                                   | Start an analysis in the background, returns `run_id`                              |
+| `GET /api/runs/{id}/events`                                                        | Server-Sent Events: one `stage` event per step, then `done` with the full result |
+| `GET /api/runs/{id}`                                                               | Current state of a run                                                               |
+| `POST /api/runs/{id}/recost`                                                       | Change quantity, budget, yield or margin and recalculate                             |
+| `POST /api/runs/{id}/compound`                                                     | Pick a compound for a run that stopped at "needs input"                              |
+| `GET /api/runs`                                                                    | History                                                                              |
+| `GET /api/svg/molecule`, `/api/svg/reaction`                                     | RDKit drawings, light or dark theme                                                  |
+| `GET /api/runs/{id}/export/report.html`, `.../offers.csv`, `.../materials.csv` | Exports                                                                              |
+| `GET /api/admin/overview`, `POST /api/admin/scrape`, `POST /api/admin/demo`    | Data page                                                                            |
 
 ### Web UI
 
@@ -210,17 +210,17 @@ Without this, the pipeline skips prediction and adds a note to the report. The m
 
 ## Configuration (`.env`)
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | – | Price extraction, route ranking and summaries. Without it, the app uses cached/sample data and template text |
-| `CLAUDE_MODEL_REASONING` | `claude-sonnet-5-5` | Route ranking and summary |
-| `CLAUDE_MODEL_EXTRACTION` | `claude-haiku-5-5` | Pulling offers out of vendor pages |
-| `DATABASE_URL` | `sqlite:///data/chemchecker.db` | e.g. `postgresql+psycopg://user:pass@host/db` |
-| `ENABLE_LIVE_SCRAPING` | `true` | Turn off for offline demos |
-| `ENABLED_VENDORS` | `bldpharm,enamine,medchemexpress` | Vendor keys from `scrapers/vendors.py` |
-| `OFFER_MAX_AGE_DAYS` | `7` | Cached offers older than this are re-scraped |
-| `SCRAPE_TIMEOUT_S` | `30` | Per-vendor timeout |
-| `AIZYNTH_CONFIG` | – | Path to AiZynthFinder `config.yml` |
+| Variable                    | Default                             | Purpose                                                                                                      |
+| --------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `ANTHROPIC_API_KEY`       | –                                  | Price extraction, route ranking and summaries. Without it, the app uses cached/sample data and template text |
+| `CLAUDE_MODEL_REASONING`  | `claude-sonnet-5-5`               | Route ranking and summary                                                                                    |
+| `CLAUDE_MODEL_EXTRACTION` | `claude-haiku-5-5`                | Pulling offers out of vendor pages                                                                           |
+| `DATABASE_URL`            | `sqlite:///data/chemchecker.db`   | e.g. `postgresql+psycopg://user:pass@host/db`                                                              |
+| `ENABLE_LIVE_SCRAPING`    | `true`                            | Turn off for offline demos                                                                                   |
+| `ENABLED_VENDORS`         | `bldpharm,enamine,medchemexpress` | Vendor keys from `scrapers/vendors.py`                                                                     |
+| `OFFER_MAX_AGE_DAYS`      | `7`                               | Cached offers older than this are re-scraped                                                                 |
+| `SCRAPE_TIMEOUT_S`        | `30`                              | Per-vendor timeout                                                                                           |
+| `AIZYNTH_CONFIG`          | –                                  | Path to AiZynthFinder `config.yml`                                                                         |
 
 ## Known limitations / next steps
 
