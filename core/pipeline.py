@@ -11,7 +11,8 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
-from core import chem, cost, explain, pricing, repository, resolver, routes
+from core import chem, cost, explain, literature, pricing, repository, resolver, routes
+from core.config import get_settings
 from core.models import Compound, MaterialCost, Query, RunState, StateName
 
 TERMINAL: set[str] = {"DONE", "NEEDS_INPUT"}
@@ -20,6 +21,7 @@ STAGE_LABELS: dict[str, str] = {
     "RESOLVE": "Resolving compound",
     "CHECK_MARKET": "Checking vendors",
     "FIND_KNOWN_ROUTE": "Looking for known routes",
+    "SEARCH_LITERATURE": "Searching the literature",
     "PREDICT_ROUTE": "Predicting a route",
     "PRICE_MATERIALS": "Pricing starting materials",
     "COST": "Costing",
@@ -71,10 +73,23 @@ def find_known_route(state: RunState) -> StateName:
     if route:
         state.route = route
         return "PRICE_MATERIALS"
+    if get_settings().literature_enabled:
+        return "SEARCH_LITERATURE"
+    return _after_known_route(state)
+
+
+def _after_known_route(state: RunState) -> StateName:
     if state.query.allow_predicted:
         return "PREDICT_ROUTE"
     state.warn("No known synthesis route, and predicted routes are turned off.")
     return "COST"
+
+
+def search_literature(state: RunState) -> StateName:
+    state.literature, warning = literature.find_synthesis_papers(state.compound.name or state.compound.cas or state.compound.smiles)
+    if warning:
+        state.warn(warning)
+    return _after_known_route(state)
 
 
 def predict_route(state: RunState) -> StateName:
@@ -135,6 +150,7 @@ HANDLERS: dict[str, Callable[[RunState], StateName]] = {
     "RESOLVE": resolve_state,
     "CHECK_MARKET": check_market,
     "FIND_KNOWN_ROUTE": find_known_route,
+    "SEARCH_LITERATURE": search_literature,
     "PREDICT_ROUTE": predict_route,
     "PRICE_MATERIALS": price_materials,
     "COST": cost_state,

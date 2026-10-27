@@ -102,6 +102,12 @@ def report_html(state: RunState) -> str:
             parts.append(f"<p><strong>Step {i}.</strong> {html.escape(step.conditions or '')}</p>")
             parts.append(f"<div class='rxn'>{chem.reaction_svg(step.reaction_smiles) or ''}</div>")
         parts.append(_table(material_rows(state.materials)))
+    if state.literature:
+        parts.append("<h2>Literature references</h2><ul>")
+        for pp in state.literature:
+            cite = html.escape(f"{pp.title} ({pp.year})" if pp.year else pp.title)
+            parts.append(f"<li><a href='{html.escape(pp.url)}'>{cite}</a></li>" if pp.url else f"<li>{cite}</li>")
+        parts.append("</ul><p><em>Found by search; not checked or used in the cost.</em></p>")
     if state.warnings:
         parts.append("<h2>Notes</h2><ul>" + "".join(f"<li>{html.escape(w)}</li>" for w in state.warnings) + "</ul>")
     parts.append("</body></html>")

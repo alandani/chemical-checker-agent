@@ -6,6 +6,7 @@ export const STAGES: { name: StageName; label: string; detail: string }[] = [
   { name: "RESOLVE", label: "Identify the compound", detail: "Name, CAS or structure to one record" },
   { name: "CHECK_MARKET", label: "Check vendors", detail: "Cached prices, then live search" },
   { name: "FIND_KNOWN_ROUTE", label: "Look for a known route", detail: "Recorded reactions" },
+  { name: "SEARCH_LITERATURE", label: "Search the literature", detail: "Published syntheses (Valency)" },
   { name: "PREDICT_ROUTE", label: "Predict a route", detail: "AiZynthFinder retrosynthesis" },
   { name: "PRICE_MATERIALS", label: "Price starting materials", detail: "Amounts adjusted for yield" },
   { name: "COST", label: "Compare with budget", detail: "Buy against make" },

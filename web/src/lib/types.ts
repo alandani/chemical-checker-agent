@@ -95,10 +95,21 @@ export interface CostBreakdown {
   gap_aud: number | null;
 }
 
+export interface Paper {
+  title: string;
+  authors: string[];
+  year: number | null;
+  venue: string | null;
+  doi: string | null;
+  url: string | null;
+  abstract: string | null;
+}
+
 export type StageName =
   | "RESOLVE"
   | "CHECK_MARKET"
   | "FIND_KNOWN_ROUTE"
+  | "SEARCH_LITERATURE"
   | "PREDICT_ROUTE"
   | "PRICE_MATERIALS"
   | "COST"
@@ -117,6 +128,7 @@ export interface RunState {
   offers: Offer[];
   route: Route | null;
   alternative_routes: Route[];
+  literature: Paper[];
   materials: MaterialCost[];
   cost: CostBreakdown | null;
   explanation: string | null;

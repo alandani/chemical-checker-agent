@@ -12,6 +12,7 @@ StateName = Literal[
     "RESOLVE",
     "CHECK_MARKET",
     "FIND_KNOWN_ROUTE",
+    "SEARCH_LITERATURE",
     "PREDICT_ROUTE",
     "PRICE_MATERIALS",
     "COST",
@@ -114,6 +115,18 @@ class Route(BaseModel):
     notes: str | None = None
 
 
+class Paper(BaseModel):
+    """A literature hit that may describe a synthesis of the target. Evidence only; never used for costing."""
+
+    title: str
+    authors: list[str] = []
+    year: int | None = None
+    venue: str | None = None
+    doi: str | None = None
+    url: str | None = None
+    abstract: str | None = None
+
+
 class MaterialCost(BaseModel):
     smiles: str
     inchikey: str | None = None
@@ -164,6 +177,7 @@ class RunState(BaseModel):
     offers: list[Offer] = []
     route: Route | None = None
     alternative_routes: list[Route] = []
+    literature: list[Paper] = []
     materials: list[MaterialCost] = []
     cost: CostBreakdown | None = None
     explanation: str | None = None

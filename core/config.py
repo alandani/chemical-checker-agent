@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     aizynth_config: str | None = None  # path to AiZynthFinder config.yml
     aizynth_time_limit_s: int = 90
 
+    # Literature search (Valency MCP server, https://docs.valency.io/guides/api/)
+    valency_token: str | None = None
+    valency_url: str = "https://mcp.valency.io/"
+    literature_max_papers: int = 5
+
     # Network
     http_timeout_s: int = 20
     user_agent: str = "ChemPriceChecker/0.1 (research prototype)"
@@ -41,6 +46,10 @@ class Settings(BaseSettings):
     @property
     def llm_enabled(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def literature_enabled(self) -> bool:
+        return bool(self.valency_token)
 
     @property
     def enabled_vendor_keys(self) -> list[str]:

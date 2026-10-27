@@ -176,6 +176,27 @@ function Finished({ run, setRun }: { run: RunState; setRun: (r: RunState) => voi
             )
           )}
 
+          {run.literature.length > 0 && (
+            <Section title="Literature references" aside="Found by search; not used in the cost">
+              <ul className="space-y-2 text-sm">
+                {run.literature.map((p) => (
+                  <li key={p.url ?? p.title}>
+                    {p.url ? (
+                      <a href={p.url} target="_blank" rel="noreferrer" className="text-cobalt hover:underline">
+                        {p.title}
+                      </a>
+                    ) : (
+                      p.title
+                    )}
+                    <span className="block text-slate">
+                      {[p.authors.slice(0, 3).join(", "), p.venue, p.year].filter(Boolean).join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
           {run.warnings.length > 0 && (
             <Section title="Notes">
               <ul className="space-y-1.5 text-sm list-disc pl-5 marker:text-faint">
